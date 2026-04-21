@@ -1,20 +1,29 @@
 const mysql = require('mysql2/promise');
 
-// Configuración de la base de datos (se recomienda usar Variables de Entorno)
 const dbConfig = {
     host: process.env.DB_HOST || 'taller.cmf0o0ssswbk.us-east-1.rds.amazonaws.com',
     user: process.env.DB_USER || 'admin',
     password: process.env.DB_PASSWORD || '12345678',
     database: process.env.DB_NAME || 'databaseLambda',
-    connectTimeout: 10000 // 10 segundos de espera máximo
+    connectTimeout: 10000
 };
 
-// Crear el pool de conexiones fuera del handler para reutilizarlo
+const CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+};
+
 let pool;
-// cloud computing!!!!
+
 exports.handler = async (event) => {
     if (!pool) pool = mysql.createPool(dbConfig);
-    
+
+    // Preflight CORS
+    if (event.requestContext?.http?.method === "OPTIONS") {
+        return { statusCode: 200, headers: CORS, body: "" };
+    }
+
     const { routeKey, pathParameters, body } = event;
     const id = pathParameters ? pathParameters.id : null;
     const data = body ? JSON.parse(body) : {};
@@ -25,32 +34,33 @@ exports.handler = async (event) => {
             case "GET /users":
                 [result] = await pool.query("SELECT * FROM users");
                 break;
-                
+
             case "POST /add":
                 [result] = await pool.query("INSERT INTO users SET ?", data);
                 break;
-                
+
             case "PUT /update/{id}":
                 [result] = await pool.query("UPDATE users SET ? WHERE id = ?", [data, id]);
                 break;
-                
+
             case "DELETE /delete/{id}":
                 [result] = await pool.query("DELETE FROM users WHERE id = ?", id);
                 break;
-                
+
             default:
                 throw new Error(`Ruta no soportada: ${routeKey}`);
         }
 
         return {
             statusCode: 200,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+            headers: { "Content-Type": "application/json", ...CORS },
             body: JSON.stringify(result)
         };
 
     } catch (err) {
         return {
             statusCode: 500,
+            headers: CORS,
             body: JSON.stringify({ error: err.message })
         };
     }

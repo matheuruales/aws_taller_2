@@ -12,3 +12,7 @@ lambda.zip
 # Logs y basura del sistema
 npm-debug.log*
 .DS_Store
+
+# Frontend y HTML local
+index.html
+frontend/
